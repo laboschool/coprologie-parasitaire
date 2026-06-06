@@ -37,6 +37,15 @@
 document.addEventListener('DOMContentLoaded', async function() {
   const loading = document.getElementById('__bundler_loading');
   function setStatus(msg) { if (loading) loading.textContent = msg; }
+  async function loadExtraScript(src) {
+    await new Promise(function(resolve, reject) {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = function() { reject(new Error('Failed to load ' + src)); };
+      document.body.appendChild(script);
+    });
+  }
 
   // Error sink persists across replaceWith since it's on window, not the DOM.
   window.addEventListener('error', function(e) {
@@ -161,6 +170,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (window.Babel && typeof window.Babel.transformScriptTags === 'function') {
       window.Babel.transformScriptTags();
     }
+    await loadExtraScript('./CoproParasito 1.0/comments-data.js');
+    await loadExtraScript('./CoproParasito 1.0/comments-addon.js');
   } catch (err) {
     setStatus('Error unpacking: ' + err.message);
     console.error('Bundle unpack error:', err);
