@@ -56,6 +56,7 @@ const data = window.__commentsData;
     isOpen: false,
     query: "",
   };
+  const commentsByNumber = new Map(flatComments.map((comment) => [String(comment.number), comment]));
 
   function normalize(value) {
     return String(value || "")
@@ -424,6 +425,39 @@ const data = window.__commentsData;
         font: 600 16px/1.35 var(--sans, sans-serif);
       }
 
+      .cp-comments-copy {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        flex-shrink: 0;
+        border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+        background: var(--surface-2, #f5f7f5);
+        color: var(--text-soft, #4d5a63);
+        border-radius: 999px;
+        padding: 7px 10px;
+        font: 600 11px/1 var(--sans, sans-serif);
+        cursor: pointer;
+        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+      }
+
+      .cp-comments-copy:hover {
+        color: var(--accent, #0f8068);
+        border-color: var(--accent-line, rgba(15, 128, 104, 0.2));
+        transform: translateY(-1px);
+      }
+
+      .cp-comments-copy.is-copied {
+        color: #ffffff;
+        background: var(--accent, #0f8068);
+        border-color: var(--accent, #0f8068);
+      }
+
+      .cp-comments-copy svg {
+        width: 14px;
+        height: 14px;
+      }
+
       .cp-comments-card p {
         margin: 0;
         color: var(--text-soft, #4d5a63);
@@ -660,6 +694,13 @@ const data = window.__commentsData;
                       <div class="cp-comments-cardhead">
                         <span class="tag">Commentaire ${comment.number}</span>
                         <h4>${highlight(comment.title, query)}</h4>
+                        <button class="cp-comments-copy" type="button" data-copy-comment="${comment.number}" aria-label="Copier ce commentaire">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="9" y="9" width="10" height="10" rx="2"></rect>
+                            <path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                          <span>Copier</span>
+                        </button>
                       </div>
                       <p>${highlight(comment.body, query)}</p>
                     </article>
@@ -671,6 +712,52 @@ const data = window.__commentsData;
         `
       )
       .join("");
+
+    content.querySelectorAll("[data-copy-comment]").forEach((button) => {
+      button.addEventListener("click", () => {
+        copyComment(button.dataset.copyComment, button);
+      });
+    });
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+
+  async function copyComment(commentNumber, button) {
+    const comment = commentsByNumber.get(String(commentNumber));
+    if (!comment || !button) return;
+
+    const textToCopy = `${comment.title}\n\n${comment.body}`;
+
+    try {
+      await copyText(textToCopy);
+      const label = button.querySelector("span");
+      if (!label) return;
+      const previous = label.textContent;
+      button.classList.add("is-copied");
+      label.textContent = "Copié";
+      window.setTimeout(() => {
+        button.classList.remove("is-copied");
+        label.textContent = previous;
+      }, 1400);
+    } catch (error) {
+      console.error("Copy failed", error);
+    }
   }
 
   function openDrawer() {
